@@ -1,0 +1,716 @@
+// ==UserScript==
+// @name           DiepHack2019 - BEST CHEAT SCRIPT FOR DIEP.IO!!
+// @name:en        DiepHack2019 - 日本製のチートスクリプト
+// @name:ja        DiepHack2019 - BEST CHEAT SCRIPT FOR DIEP.IO!!
+// @namespace      https://greasyfork.org/scripts/386894-diephack2019-best-cheat-script-for-diep-io
+// @version        2.0.6
+// @description    Please press the Esc key when you want to open the menu! [Give all 50 achievements][Theme setting][Instantly status][Simple bot] etc...
+// @description:ja メニューを開く時はESCキーを押してください! [実績全達成][一括でステータス設定][テーマの設定][簡易bot] その他いろいろ...
+// @description:en Please press the Esc key when you want to open the menu! [Give all 50 achievements][Theme setting][Instantly status][Simple bot] etc...
+// @description:ko 메뉴를 열 때 ESC 키를 눌러주세요! [실적 완성 '[일괄 상태 설정] [테마 설정] [간이 bot] 기타 등등...
+// @description:zh 按[ESC]键打开菜单! [成就完成][状态设置][主题设置][简单机器人] 其他...
+// @homepageURL    null
+// @icon           https://diep.io/favicon-96x96.png
+// @author         𝐗
+// @icon64URL      null
+// @supportURL     null
+// @include        *://diep.io/*
+// @match          diep.io
+// @exclude        diep.io
+// @require        http://code.jquery.com/jquery-latest.js
+// @resource       null
+// @connect        diep.io
+// @run-at         null
+// @grant          GM_getValue
+// @grant          GM_setValue
+// @grant          GM_notification
+// @note           -----------------------------------------------------------------------------------------------
+// @note           2019-10-10 Release v2.0.6
+// @note           ・弾を重ねる機能の追加(ペンタ, スプレ, オクト)
+// @note           　* Added bullets stack script (Penta Shot, Spread Shot, Octo Tank)
+// @note           2019-09-30 Release v2.0.5 [!] The copyright holder has changed for this script. (Ponyo → 𝐗[older brother])
+// @note           ・スタイルの追加＆カラーのアニメーションの追加
+// @note           　* Added style & color animation
+// @note           2019-09-11 Release v2.0.4
+// @note           ・カラーが未設定状態ではメニューが消えない問題を修正
+// @note           　* If the color option wasn't initially, fixed the menu couldn't hide
+// @note           2019-08-26 Release v2.0.3
+// @note           ・언어에 한국어를 추가 (Google번역)
+// @note           ・将中文添加到语言中 (Google翻译)
+// @note           ・テーマカラーの設定機能の追加
+// @note           　* Added setting the style
+// @note           2019-08-16 Release v2.0.2
+// @note           ・カスタムにステータス設定ができる機能の追加
+// @note           　* Added setting the your status points
+// @note           ・更新確認(スクリプト公開)URLの確認閲覧機能の追加
+// @note           　* You can able to check for updates
+// @note           2019-08-15 Release v2.0.1
+// @note           ・通知によるメッセージを実現
+// @note           　* Added notification
+// @note           2019-08-13 Release v2.0.0
+// @note           ・UIと機能を大幅に変更
+// @note           　* Change the UI and functions
+// @note           -----------------------------------------------------------------------------------------------
+// @note           2019-06-26 Release v1.0.1
+// @note           ・一括でステータス設定できる機能を追加
+// @note           　* Added setting the status points
+// @note           2019-06-26 Release v1.0.0
+// @note           -----------------------------------------------------------------------------------------------
+// ==/UserScript==
+
+// *** タイマーシステム変数 *** //
+var timeStart = new Date().getTime(), timeNow = timeStart, timePassed = 0, timeLast = timeStart, timeUnit = 15, timeCount = 0;
+
+// *** 変数宣言 *** //
+var canvas = document.getElementById('canvas'), ctx = canvas.getContext("2d"), diepHackMenu = document.createElement('div');
+var diepHackSystem_version = "2.0.6", diepHackSystem_years = "2019", diepHackSystem_NotificationTitle = `DiepHack` + diepHackSystem_years + ` v` + diepHackSystem_version, diepHackSystem_MenuFlag = false;
+var bltype = "";
+
+var cycleRate,
+	maxAngle,
+	NCANNON,
+	angleUnit,
+	tankIndex = 0;
+var mouseX,
+	mouseY;
+const tankData = [
+	{
+		name: "(Disable)",
+		cycleRate: 0.000000,
+		maxAngle: 0.0,
+		NCANNON: 0
+	},
+	{
+		name: "Penta",
+		cycleRate: 0.003125,
+		maxAngle: Math.PI * 45 / 180,
+		NCANNON: 3
+	},
+	{
+		name: "SpreadShot",
+		cycleRate: 0.001555,
+		maxAngle: Math.PI * 75 / 180,
+		NCANNON: 6
+	},
+	{
+		name: "Octo",
+		cycleRate: 0.003125,
+		maxAngle: Math.PI * 45 / 180,
+		NCANNON: 2
+	}
+];
+var effective = false,
+	frameRequest,
+	countBullet = 0,
+	startA = 0,
+	artificialMouseMove = false,
+	readyBullet = [0, 0, 0];
+
+// *** HTMLの挿入 *** //
+var scriptHTMLelement = document.createElement("div");
+scriptHTMLelement.style = "pointer-events: none; position: fixed; top:10px; left:10px; font-family: Ubuntu; color: #FFFFFF; font-style: normal; font-variant: normal; text-shadow: black 2px 0px, black -2px 0px, black 0px -2px, black 0px 2px, black 2px 2px, black -2px 2px, black 2px -2px, black -2px -2px, black 1px 2px, black -1px 2px, black 1px -2px, black -1px -2px, black 2px 1px, black -2px 1px, black 2px -1px, black -2px -1px;";
+document.body.appendChild(scriptHTMLelement);
+
+// *** ゲームのカラーテーマの設定 *** //
+var diepHackSystem_ColorCode = [`
+// ============================================================================================================= //
+input.execute('net_replace_color 0 0x4F4F4F');
+input.execute('net_replace_color 1 0x999999');
+input.execute('net_replace_color 2 0x00B1DE');
+input.execute('net_replace_color 3 0x00B1DE');
+input.execute('net_replace_color 4 0xF14E54');
+input.execute('net_replace_color 5 0xBE7FF5');
+input.execute('net_replace_color 6 0x00F46C');
+input.execute('net_replace_color 7 0x89FF69');
+input.execute('net_replace_color 8 0xFFE869');
+input.execute('net_replace_color 9 0xFC7677');
+input.execute('net_replace_color 10 0x768DFC');
+input.execute('net_replace_color 11 0xFF77DC');
+input.execute('net_replace_color 12 0xFFE869');
+input.execute('net_replace_color 13 0x64FF8C');
+input.execute('net_replace_color 14 0xBBBBBB');
+input.execute('net_replace_color 15 0xFF0000');
+input.execute('net_replace_color 16 0xFCC276');
+input.execute('net_replace_color 17 0xC0C0C0');
+input.execute('ui_replace_colors 0x6CF0EC 0x98F06C 0xF06C6C 0xF0D96C 0x6C96F0 0x9A6CF0 0xEC6CF0 0xEEB790');
+// ============================================================================================================= //
+input.set_convar('ren_background_color', 0xCDCDCD);
+input.set_convar('ren_border_color', 0x797979);
+input.set_convar('ren_minimap_background_color', 0xCDCDCD);
+input.set_convar('ren_minimap_border_color', 0x797979);
+input.set_convar('ren_health_fill_color', 0x85E37D);
+input.set_convar('ren_health_background_color', 0x555555);
+input.set_convar('ren_xp_bar_fill_color', 0xF0D96C);
+input.set_convar('ren_score_bar_fill_color', 0x6CEFA2);
+input.set_convar('ren_bar_background_color', 0x000000);
+input.set_convar('ren_stroke_solid_color', 0x555555);
+input.set_convar('ren_grid_color', 0x000000);
+// ============================================================================================================= //
+input.execute('net_force_secure false');
+input.execute('net_latency_history_size 25');
+input.set_convar('ren_achievements', true);
+input.set_convar('ren_background', true);
+input.set_convar('ren_background_color', 13487565);
+input.set_convar('ren_bar_background_color', 0);
+input.set_convar('ren_border_color_alpha', 0.100000);
+input.set_convar('ren_cache_grid', true);
+input.set_convar('ren_changelog', true);
+input.set_convar('ren_context_reinitialization', true);
+input.set_convar('ren_debug_collisions', false);
+input.set_convar('ren_debug_info', false);
+input.set_convar('ren_fps', false);
+input.set_convar('ren_grid_base_alpha', 0.100000);
+input.set_convar('ren_grid_color', 0);
+input.set_convar('ren_health_background_color', 5592405);
+input.set_convar('ren_health_bars', true);
+input.set_convar('ren_health_fill_color', 8774525);
+input.set_convar('ren_health_color', 8774525);
+input.set_convar('ren_minimap_background_color', 13487565);
+input.set_convar('ren_minimap_border_color', 5592405);
+input.set_convar('ren_minimap_viewport', false);
+input.set_convar('ren_minimap_viewport', false);
+input.set_convar('ren_names', true);
+input.set_convar('ren_pattern_grid', false);
+input.set_convar('ren_raw_health_values', false);
+input.set_convar('ren_score_bar_fill_color', 4456337);
+input.set_convar('ren_scoreboard', true);
+input.set_convar('ren_scoreboard_names', true);
+input.set_convar('ren_solid_background', false);
+input.set_convar('ren_stats', true);
+input.set_convar('ren_stroke_soft_color', true);
+input.set_convar('ren_stroke_soft_color_intensity', 0.250000);
+input.set_convar('ren_stroke_solid_color', 5592405);
+input.set_convar('ren_ui', true);
+input.set_convar('ren_ui_scale', 1.000000);
+input.set_convar('ren_upgrades', true);
+input.set_convar('ren_xp_bar_fill_color', 16768579);
+input.execute('ui_prevent_right_click true');
+// ============================================================================================================= //
+`,`
+// ============================================================================================================= //
+input.execute('net_replace_color 0 0x4F4F4F');
+input.execute('net_replace_color 1 0x999999');
+input.execute('net_replace_color 2 0x8A00CC');
+input.execute('net_replace_color 3 0x00B1DE');
+input.execute('net_replace_color 4 0xF14E54');
+input.execute('net_replace_color 5 0xBE7FF5');
+input.execute('net_replace_color 6 0x00F46C');
+input.execute('net_replace_color 7 0x89FF69');
+input.execute('net_replace_color 8 0x8A00CC');
+input.execute('net_replace_color 9 0x8A00CC');
+input.execute('net_replace_color 10 0x8A00CC');
+input.execute('net_replace_color 11 0x8A00CC');
+input.execute('net_replace_color 12 0xFFE869');
+input.execute('net_replace_color 13 0x8A00CC');
+input.execute('net_replace_color 14 0xBBBBBB');
+input.execute('net_replace_color 15 0x930000');
+input.execute('net_replace_color 16 0x8A00CC');
+input.execute('net_replace_color 17 0xC0C0C0');
+// ============================================================================================================= //
+input.set_convar('ren_background_color', 0x202020);
+input.set_convar('ren_solid_background', true);
+// ============================================================================================================= //
+`,`
+// ============================================================================================================= //
+input.execute('net_replace_color 8 0xFFC402');
+input.execute('net_replace_color 9 0xFF4949');
+input.execute('net_replace_color 12 0xFFC402');
+input.execute('net_replace_color 16 0xFFC402');
+// ============================================================================================================= //
+input.set_convar('ren_background_color', 0x000020);
+// ============================================================================================================= //
+`];
+
+// *** 言語の管理 *** //
+const USERLANGUAGE = window.navigator.language;
+const _TEXTS = {
+	en: {
+		m_a1: () => `Loading...`,
+		m_a2: () => `Complete!`,
+		m_n1: () => `Update This script`,
+		m_n2: () => `Console`,
+		m_n3: () => `Prints help text`,
+		m_n4: () => `Give all achievements`,
+		m_n5: () => `Disconnect`,
+		i_c1: () => `Basic`,
+		i_c2: () => `Dark`,
+		i_c2: () => `Night`,
+		h_n1: () => `Change the attack type`,
+		i_s1: () => `Attacker`,
+		i_s2: () => `Rammer`,
+		i_s3: () => `Drone`,
+		i_s4: () => `Custom (Right click to setting)`,
+		m_a3: () => `Complete!`,
+		m_n6: () => `Death`,
+	},
+	ja: {
+		m_a1: () => `起動中...`,
+		m_a2: () => `起動完了!!`,
+		m_n1: () => `スクリプトの更新確認`,
+		m_n2: () => `コンソール`,
+		m_n3: () => `コマンド一覧`,
+		m_n4: () => `実績コンプリート`,
+		m_n5: () => `サーバーから強制離脱`,
+		i_c1: () => `通常`,
+		i_c2: () => `ダーク`,
+		i_c3: () => `ナイト`,
+		h_n1: () => `攻撃種類の変更`,
+		i_s1: () => `攻撃型`,
+		i_s2: () => `体当たり型`,
+		i_s3: () => `ドローン`,
+		i_s4: () => `カスタム (右クリックで設定)`,
+		m_a3: () => `ステータスポイントを設定しました!`,
+		m_n6: () => `自滅`,
+	},
+	ko: {
+		m_a1: () => `실행 중 ...`,
+		m_a2: () => `실행 완료!`,
+		m_n1: () => `스크립트의 업데이트 확인`,
+		m_n2: () => `콘솔`,
+		m_n3: () => `명령 목록`,
+		m_n4: () => `실적 완성`,
+		m_n5: () => `서버에서 강제 이탈`,
+		i_c1: () => `보통`,
+		i_c2: () => `다크`,
+		i_c3: () => `밤`,
+		h_n1: () => `공격 유형 변경`,
+		i_s1: () => `공격형`,
+		i_s2: () => `몸싸움 형`,
+		i_s3: () => `드론`,
+		i_s4: () => `정의 (우클릭으로 설정)`,
+		m_a3: () => `스탯 포인트를 설정했습니다!`,
+		m_n6: () => `자살`,
+	},
+	zh: {
+		m_a1: () => `开始...`,
+		m_a2: () => `启动完成!!`,
+		m_n1: () => `检查脚本更新`,
+		m_n2: () => `控制台`,
+		m_n3: () => `命令列表`,
+		m_n4: () => `成就完成`,
+		m_n5: () => `强制退出服务器`,
+		i_c1: () => `平时`,
+		i_c2: () => `黑`,
+		i_c3: () => `夜`,
+		h_n1: () => `攻击类型变更`,
+		i_s1: () => `攻击类型`,
+		i_s2: () => `每种体型`,
+		i_s3: () => `拉`,
+		i_s4: () => `自定义 (通过右键单击设置)`,
+		m_a3: () => `状态点设置！`,
+		m_n6: () => `弄巧成拙`,
+	},
+}
+const TEXTS = _TEXTS[USERLANGUAGE] || _TEXTS[USERLANGUAGE.substring(0, 2)] || _TEXTS.en;
+
+// *** 変数宣言 *** //
+var I = 0, S = [0, 0, 0, 0, [0x00, 0x00, 0x00]];
+
+// *** 初期化 *** //
+document.title = (`${document.title} - DiepHack${diepHackSystem_years}`);
+GM_notification(`${TEXTS.m_a1()}`, diepHackSystem_NotificationTitle, null);
+styleInit();
+jsInit();
+bodyInit();
+GM_notification(`${TEXTS.m_a2()}`, diepHackSystem_NotificationTitle, null);
+
+// *** CSSの初期化 *** //
+function styleInit() {
+	addGlobalStyle(`.diepHack-menu{position:absolute;left:0px;top:0px;width:100%;height:100%;background-color:#00000050;`);
+	addGlobalStyle(`.diepHack-pretitle{font-size: 34px;}`);
+	addGlobalStyle(`.diepHack-subtitle{font-size: 19px;}`);
+	addGlobalStyle(`.diepHack-description{font-size: 16px;}`);
+	addGlobalStyle(`.diepHack-warning{font-size: 16px; color:#ff9999}`);
+	addGlobalStyle(`a {text-decoration: none;} a.diepHack-url:link{color:#FFFFFF} a.diepHack-url:visited{color:#FFFFFF;} a.diepHack-url:hover{color:#00B2E1;text-decoration: underline;} a.diepHack-url:active{color:#FFE66C;}`);
+	addGlobalStyle(`
+.diepHack-button {
+	margin: 0 10px 20px;
+	position: relative;
+	height: 50px;
+	width: 50px;
+	cursor: pointer;
+	line-height: 47px;
+	background-color: #f1f1f1;
+	text-align: center;
+	font-size: 30px;
+	display: inline-block;
+	text-shadow: 0 -1px 1px rgba(255, 255, 255, 0.5);
+	color: #444;
+	-moz-transition: .1s ease-out;
+	-webkit-transition: .1s ease-out;
+	-o-transition: .1s ease-out;
+	-ms-transition: .1s ease-out;
+	-khtml-transition: .1s ease-out;
+	transition: .1s ease-out;
+	box-shadow: inset 0 0 5px 0 rgba(255, 255, 255, 0.5);
+	-moz-box-shadow: inset 0 0 5px 0 rgba(255, 255, 255, 0.5);
+	-ms-box-shadow: inset 0 0 5px 0 rgba(255, 255, 255, 0.5);
+	-webkit-box-shadow: inset 0 0 5px 0 rgba(255, 255, 255, 0.5);
+	-khtml-box-shadow: inset 0 0 5px 0 rgba(255, 255, 255, 0.5);
+	-o-box-shadow: inset 0 0 5px 0 rgba(255, 255, 255, 0.5);
+	border-width: 1px;
+	border-style: solid;
+	border-left-color: #777;
+	border-right-color: #777;
+	border-top-color: #999;
+	border-bottom: 4px solid #555;
+	user-select: none;
+	-moz-user-select: none;
+	-webkit-user-select: none;
+	-o-user-select: none;
+	-ms-user-select: none;
+	-khtml-user-select: none;
+	border-radius: 50px;
+	-moz-border-radius: 50px;
+	-webkit-border-radius: 50px;
+	-ms-border-radius: 50px;
+	-khtml-border-radius: 50px;
+	-o-border-radius: 50px;
+	background-image: -moz-linear-gradient(top, transparent, rgba(0, 0, 0, 0.2));
+	background-image: -webkit-linear-gradient(top, transparent, rgba(0, 0, 0, 0.2));
+	background-image: -o-linear-gradient(top, transparent, rgba(0, 0, 0, 0.2));
+	background-image: -khtml-linear-gradient(top, transparent, rgba(0, 0, 0, 0.2));
+	background-image: -ms-linear-gradient(top, transparent, rgba(0, 0, 0, 0.2));
+	background-image: linear-gradient(top, transparent, rgba(0, 0, 0, 0.2))
+}
+.diepHack-button:hover {
+	color: #333;
+	background-image: -moz-linear-gradient(top, transparent, rgba(0, 0, 0, 0.17));
+	background-image: -webkit-linear-gradient(top, transparent, rgba(0, 0, 0, 0.17));
+	background-image: -ms-linear-gradient(top, transparent, rgba(0, 0, 0, 0.17));
+	background-image: -khtml-linear-gradient(top, transparent, rgba(0, 0, 0, 0.17));
+	background-image: -o-linear-gradient(top, transparent, rgba(0, 0, 0, 0.17));
+	background-image: linear-gradient(top, transparent, rgba(0, 0, 0, 0.17))
+}
+.diepHack-button:active {
+	color: #777;
+	-webkit-box-shadow: inset 0 1px 2px 0 #333, 0 1px 1px 0 #fff
+}
+.text-shadow-negra {
+	text-shadow: -1px -1px 0 rgba(0, 0, 0, 0.2)
+}
+.text-blanco {
+	color: #F2F2F2
+}
+.text-blanco:hover {
+	color: #DDD
+}
+.text-blanco:active {
+	color: #DDC
+}
+.blue {
+	background-color: #00B2E180;
+	border-color: #00B2E180 #66666680 #44444480
+}
+`);
+	addGlobalStyle(`.cp_tooltip{position:relative;display:inline-block;cursor:pointer}.cp_tooltip .cp_tooltiptext{position:absolute;z-index:1;bottom:120%;left:0;visibility:hidden;white-space:nowrap;border-radius:20px;background-color:#00B2E1CC;transition:opacity 1s;text-align:center;opacity:0;padding: 0px 10px;font-size:16px;color:#fff}.cp_tooltip .cp_tooltiptext::after{position:absolute;top:100%;left:0;margin-left:20px;content:' ';border:5px solid transparent;border-top-color:#00B2E1CC}.cp_tooltip:hover .cp_tooltiptext{visibility:visible;opacity:1}`);
+	function addGlobalStyle(css) {
+		var head, style;
+		head = document.getElementsByTagName('head')[0];
+		if (!head) {
+			return;
+		}
+		style = document.createElement('style');
+		style.type = 'text/css';
+		style.innerHTML = css;
+		head.appendChild(style);
+	}
+}
+
+// *** JSの初期化 *** //
+function jsInit() {
+	addGlobalJavaScript(`function achievementFlag(e){var c=JSON.parse('{"A::1ba4250a398116e7_1":"'+String(e)+'","A::1c00693fbf538316_1":"'+String(e)+'","A::22d84fdc78b1f1ae_1":"'+String(e)+'","A::22fd2ee6d05881d6_1":"'+String(e)+'","A::256245339c3742d2_1":"10000","A::2780b5743fe93789_1":"'+String(e)+'","A::300ddd6f1fb3d69d_1":"500","A::33e4cb47afd5602f_1":"10","A::3fd17b5d35c36670_1":"'+String(e)+'","A::4d545ac615beec40_1":"'+String(e)+'","A::4eebb78f4ee19cba_1":"'+String(e)+'","A::54084a4936c7e37_1":"'+String(e)+'","A::5613de303c7e06f0_1":"'+String(e)+'","A::5892e09831854ad2_1":"'+String(e)+'","A::5dbb422e510cec75_1":"'+String(e)+'","A::6502bcb56dfbc0e3_1":"'+String(e)+'","A::6520a970c68efb85_1":"'+String(e)+'","A::6d07f075d9877ab_1":"'+String(e)+'","A::6d671cfa6dceb09_1":"500","A::71c663fb258f5243_1":"'+String(e)+'","A::723c26b6a37fccbb_1":"100","A::76646f423e5d6bc4_1":"'+String(e)+'","A::8221180ec6d53232_1":"10000","A::87e48332e9161b3d_1":"'+String(e)+'","A::8abd923027114f9e_1":"1000","A::8b83f81f510fd136_1":"10","A::8b8fe153a4965c63_1":"'+String(e)+'","A::8eeec8c270ef92be_1":"'+String(e)+'","A::9898db9ff6d3c1b3_1":"'+String(e)+'","A::9953423e884422b6_1":"100","A::9f0edada2bd7cd6_1":"'+String(e)+'","A::a402fdb3f5cebf99_1":"'+String(e)+'","A::a81a738312c7705d_1":"'+String(e)+'","A::b8b3e7fd58ff6706_1":"'+String(e)+'","A::b95a9621ccccad3c_1":"'+String(e)+'","A::bb9188cddc9d5b1f_1":"100","A::bdf3e0a1c4ebcaee_1":"'+String(e)+'","A::cdf66074bb5ce7fa_1":"'+String(e)+'","A::d3e4829583362b48_1":"3000","A::d583013681f15fcc_1":"'+String(e)+'","A::d932ec7312510a14_1":"10","A::e1f4f3e6a5c9bacb_1":"'+String(e)+'","A::e6111736c85494e9_1":"'+String(e)+'","A::eb9792219de8f755_1":"'+String(e)+'","A::ecea90c4be06d999_1":"'+String(e)+'","A::eef89695be793c7f_1":"100","A::f3618c60205d7ded_1":"'+String(e)+'","A::f73016825baab042_1":"100","A::fc3b3faf73bae216_1":"'+String(e)+'","A::bae942e2191270e_1":"'+String(e)+'"}');Object.keys(c).forEach(e=>{localStorage.setItem(e,c[e])}),location.reload(!0)}`);
+	function addGlobalJavaScript(js) {
+		var head, script;
+		head = document.getElementsByTagName('head')[0];
+		if (!head) {
+			return;
+		}
+		script = document.createElement('script');
+		script.type = 'text/javascript';
+		script.innerHTML = js;
+		head.appendChild(script);
+	}
+}
+
+// *** HTMLの初期化 *** //
+var diepHackSystem_ColorCode_Execute = diepHackSystem_ColorCode[GM_getValue(`GM_DiepHack${diepHackSystem_years}_diepThema`)];
+function bodyInit() {
+	document.getElementsByTagName('body')[0].appendChild(diepHackMenu);
+	diepHackMenu.style = "font-family: Ubuntu; color: #FFFFFF; font-style: normal; font-variant: normal; text-shadow: black 2px 0px, black -2px 0px, black 0px -2px, black 0px 2px, black 2px 2px, black -2px 2px, black 2px -2px, black -2px -2px, black 1px 2px, black -1px 2px, black 1px -2px, black -1px -2px, black 2px 1px, black -2px 1px, black 2px -1px, black -2px -1px;";
+	diepHackMenu.innerHTML = `
+<link href="https://use.fontawesome.com/releases/v5.6.1/css/all.css" rel="stylesheet">
+<div id="diepHack-menu" class="diepHack-menu" oncopy="return false;" onselectstart="return false;" oncontextmenu="return false;">
+<center>
+<br /><br /><span class="diepHack-pretitle">DiepHack${diepHackSystem_years}</span>&nbsp&nbsp<span class="diepHack-subtitle">by 𝐗[🇯🇵]</span>&nbsp-&nbsp<a class="diepHack-url" target="_blank" href="#">(Homepage)</a><br /><br /><br />
+<div id="black" class="diepHack-button blue text-blanco text-shadow-negra cp_tooltip" onclick="window.open('https://greasyfork.org/scripts/386894-diephack2019-best-cheat-script-for-diep-io', '_blank');return false;"><i class="fas fa-wrench" style="font-size:0.6em;"></i><span class="cp_tooltiptext">${TEXTS.m_n1()}</span></div>
+<div id="black" class="diepHack-button blue text-blanco text-shadow-negra cp_tooltip" onclick="window.open('https://discord.gg/UsuDkbC', '_blank');return false;"><i class="fab fa-discord" style="font-size:0.6em;"></i><span class="cp_tooltiptext">Discord</span></div>
+<div id="black" class="diepHack-button blue text-blanco text-shadow-negra cp_tooltip" onclick="input.keyDown(36);input.keyUp(36);return false;"><i class="fas fa-terminal" style="font-size:0.6em;"></i><span class="cp_tooltiptext">${TEXTS.m_n2()}</span></div>
+<div id="black" class="diepHack-button blue text-blanco text-shadow-negra cp_tooltip" onclick="input.execute('help');return false;"><i class="far fa-question-circle" style="font-size:0.6em;"></i><span class="cp_tooltiptext">${TEXTS.m_n3()}</span></div>
+<div id="black" class="diepHack-button blue text-blanco text-shadow-negra cp_tooltip" onclick="achievementFlag(1);return false;"><i class="fas fa-trophy" style="font-size:0.6em;"></i><span class="cp_tooltiptext">${TEXTS.m_n4()}</span></div>
+<div id="black" class="diepHack-button blue text-blanco text-shadow-negra cp_tooltip" onclick="input.execute('lb_reconnect');return false;"><i class="fas fa-server" style="font-size:0.6em;"></i><span class="cp_tooltiptext">${TEXTS.m_n5()}</span></div><br />
+<div id="diepHack-thema-select-1" class="diepHack-button blue text-blanco text-shadow-negra cp_tooltip" onclick="${diepHackSystem_ColorCode[0]+diepHackSystem_ColorCode[0]}return false;"><i class="fas fa-fill-drip" style="font-size:0.6em;"></i><span class="cp_tooltiptext">${TEXTS.i_c1()}</span></div>
+<div id="diepHack-thema-select-2" class="diepHack-button blue text-blanco text-shadow-negra cp_tooltip" onclick="${diepHackSystem_ColorCode[0]+diepHackSystem_ColorCode[1]}return false;"><i class="fas fa-fill-drip" style="font-size:0.6em;"></i><span class="cp_tooltiptext">${TEXTS.i_c2()}</span></div>
+<div id="diepHack-thema-select-3" class="diepHack-button blue text-blanco text-shadow-negra cp_tooltip" onclick="${diepHackSystem_ColorCode[0]+diepHackSystem_ColorCode[2]}return false;"><i class="fas fa-fill-drip" style="font-size:0.6em;"></i><span class="cp_tooltiptext">${TEXTS.i_c3()}</span></div><br />
+<div id="diepHack-hack-1" class="diepHack-button blue text-blanco text-shadow-negra cp_tooltip" onclick="return false;"><i class="fas fa-cog" style="font-size:0.6em;"></i><span class="cp_tooltiptext">${TEXTS.h_n1()}</span></div><br />
+<div id="black" class="diepHack-button blue text-blanco text-shadow-negra cp_tooltip" onclick="input.execute('game_stats_build 555555566666667777777444444488888');return false;"><i class="far fa-hand-rock" style="font-size:0.6em;"></i><span class="cp_tooltiptext">${TEXTS.i_s1()}</span></div>
+<div id="black" class="diepHack-button blue text-blanco text-shadow-negra cp_tooltip" onclick="input.execute('game_stats_build 333333322222228888888171717171717');return false;"><i class="fas fa-shield-alt" style="font-size:0.6em;"></i><span class="cp_tooltiptext">${TEXTS.i_s2()}</span></div>
+<div id="black" class="diepHack-button blue text-blanco text-shadow-negra cp_tooltip" onclick="input.execute('game_stats_build 555555566666668888888444444433322');return false;"><i class="fas fa-location-arrow" style="font-size:0.6em;"></i><span class="cp_tooltiptext">${TEXTS.i_s3()}</span></div>
+<div id="diepHack-stat-custom" class="diepHack-button blue text-blanco text-shadow-negra cp_tooltip" onclick="return false;"><i class="fas fa-save" style="font-size:0.6em;"></i><span class="cp_tooltiptext">${TEXTS.i_s4()}</span></div><br />
+<div id="black" class="diepHack-button blue text-blanco text-shadow-negra cp_tooltip" onclick="input.keyDown(79);return false;"><i class="fas fa-dizzy" style="font-size:0.6em;"></i><span class="cp_tooltiptext">${TEXTS.m_n6()}</span></div><br />
+</center>
+</div>
+`;
+}
+
+// *** キー入力情報の適用 *** //
+document.addEventListener('keyup', function(e) {
+	var keyWhich = e.which;
+	if (keyWhich == 27) {
+		diepHackSystem_MenuFlag = diepHackSystem_MenuFlag ^ true;
+	}
+});
+
+// *** ゲームのカラーテーマの設定 *** //
+$(`#diepHack-thema-select-1`).click(function(){
+	GM_setValue(`GM_DiepHack${diepHackSystem_years}_diepThema`, 0);
+});
+$(`#diepHack-thema-select-2`).click(function(){
+	GM_setValue(`GM_DiepHack${diepHackSystem_years}_diepThema`, 1);
+});
+$(`#diepHack-thema-select-3`).click(function(){
+	GM_setValue(`GM_DiepHack${diepHackSystem_years}_diepThema`, 2);
+});
+
+// *** ゲームのハックの設定 *** //
+$(`#diepHack-hack-1`).click(function(){
+	changeTank((tankIndex + 1) % tankData.length);
+});
+
+// *** ステータスポイントのカスタマイズ設定 *** //
+$('#diepHack-stat-custom').click(function(){
+	var diepHackSystem_status = GM_getValue(`GM_DiepHack${diepHackSystem_years}_diepStatus`, diepHackSystem_status);
+	input.execute(`game_stats_build ${diepHackSystem_status}`);
+});
+$('#diepHack-stat-custom').bind('contextmenu', function(){
+	var diepHackSystem_status = input.get_convar('game_stats_build');
+	GM_notification(`${TEXTS.m_a3()}\n${diepHackSystem_status}`, diepHackSystem_NotificationTitle, null);
+	GM_setValue(`GM_DiepHack${diepHackSystem_years}_diepStatus`, diepHackSystem_status);
+});
+
+// *** HSVからRGBに変換 *** //
+function HSV2RGB(H,S,V) {
+	var C = V * S;
+	var Hp = H / 60;
+	var X = C * (1 - Math.abs(Hp % 2 - 1));
+	var R, G, B;
+	if (0 <= Hp && Hp < 1) {[R,G,B]=[C,X,0]};
+	if (1 <= Hp && Hp < 2) {[R,G,B]=[X,C,0]};
+	if (2 <= Hp && Hp < 3) {[R,G,B]=[0,C,X]};
+	if (3 <= Hp && Hp < 4) {[R,G,B]=[0,X,C]};
+	if (4 <= Hp && Hp < 5) {[R,G,B]=[X,0,C]};
+	if (5 <= Hp && Hp < 6) {[R,G,B]=[C,0,X]};
+	var m = V - C;
+	[R, G, B] = [R+m, G+m, B+m];
+	R = Math.floor(R * 255);
+	G = Math.floor(G * 255);
+	B = Math.floor(B * 255);
+	return [R, G, B];
+}
+// *** 数値を2桁の16進数に変換 *** //
+function NUM2HEX(N) {
+	return (('00' + N.toString(16).toUpperCase()).substr(-2));
+}
+// *** 指定した範囲に数値を収める *** //
+function NUML(N, I, A) {
+	if (A < N) {
+		N = A;
+	}
+	if (I > N) {
+		N = I;
+	}
+	return N;
+}
+
+// *** プログラム本体 *** //
+function main() {
+	var id = GM_getValue(`GM_DiepHack${diepHackSystem_years}_diepThema`);
+	if (id == null) {
+		id = 0;
+	}
+	if (timeCount == 0) {
+		document.getElementById(`diepHack-thema-select-${(1+id)}`).click();
+	}
+	if (document.getElementById("a").style.display == null || document.getElementById("a").style.display !== "none") {
+		input.keyUp(79);
+		scriptHTMLelement.innerHTML = ``;
+	} else {
+		scriptHTMLelement.innerHTML = ``;
+		if (bltype != "(Disable)") {
+			scriptHTMLelement.innerHTML = `<p>[Bullet Hack] Type : ${bltype}</p>`;
+		}
+		// ==================================================================================================================
+		// input.execute(`function X 0x${NUM2HEX(S[4][0])}${NUM2HEX(S[4][1])}${NUM2HEX(S[4][2])}`);
+		// input.set_convar('function', parseInt(`${NUM2HEX(S[4][0])}${NUM2HEX(S[4][1])}${NUM2HEX(S[4][2])}`));
+		// ==================================================================================================================
+		if (id == 1) {
+			// *** Base Tank *** //
+			I = 2;
+			S[0] = 200;
+			S = [S[0], 280, 100, NUML((Math.abs((timeCount % (S[0] * 2)) - S[0]) / S[0]), 0.2, 0.6)];
+			S[4] = HSV2RGB(S[1], (S[2] / 100), S[3]);
+			input.execute(`net_replace_color ${I} 0x${NUM2HEX(S[4][0])}${NUM2HEX(S[4][1])}${NUM2HEX(S[4][2])}`);
+			// *** Blue *** //
+			I = 3;
+			S[0] = 100;
+			S = [S[0], 200, 100, NUML((Math.abs((timeCount % (S[0] * 2)) - S[0]) / S[0]), 0.6, 0.9)];
+			S[4] = HSV2RGB(S[1], (S[2] / 100), S[3]);
+			input.execute(`net_replace_color ${I} 0x${NUM2HEX(S[4][0])}${NUM2HEX(S[4][1])}${NUM2HEX(S[4][2])}`);
+			// *** Red *** //
+			I = 4;
+			S[0] = 100;
+			S = [S[0], 0, 100, NUML((Math.abs((timeCount % (S[0] * 2)) - S[0]) / S[0]), 0.6, 0.9)];
+			S[4] = HSV2RGB(S[1], (S[2] / 100), S[3]);
+			input.execute(`net_replace_color ${I} 0x${NUM2HEX(S[4][0])}${NUM2HEX(S[4][1])}${NUM2HEX(S[4][2])}`);
+			// *** Purple *** //
+			I = 5;
+			S[0] = 100;
+			S = [S[0], 264, 100, NUML((Math.abs((timeCount % (S[0] * 2)) - S[0]) / S[0]), 0.6, 0.9)];
+			S[4] = HSV2RGB(S[1], (S[2] / 100), S[3]);
+			input.execute(`net_replace_color ${I} 0x${NUM2HEX(S[4][0])}${NUM2HEX(S[4][1])}${NUM2HEX(S[4][2])}`);
+			// *** Green *** //
+			I = 6;
+			S[0] = 100;
+			S = [S[0], 120, 100, NUML((Math.abs((timeCount % (S[0] * 2)) - S[0]) / S[0]), 0.6, 0.9)];
+			S[4] = HSV2RGB(S[1], (S[2] / 100), S[3]);
+			input.execute(`net_replace_color ${I} 0x${NUM2HEX(S[4][0])}${NUM2HEX(S[4][1])}${NUM2HEX(S[4][2])}`);
+			// *** Crusher *** //
+			I = 11;
+			S[0] = 12;
+			S = [S[0], 0, 0, NUML((Math.abs((timeCount % (S[0] * 2)) - S[0]) / S[0]), 0.3, 0.7)];
+			S[4] = HSV2RGB(S[1], (S[2] / 100), S[3]);
+			input.execute(`net_replace_color ${I} 0x${NUM2HEX(S[4][0])}${NUM2HEX(S[4][1])}${NUM2HEX(S[4][2])}`);
+			// *** Fallen *** //
+			I = 17;
+			S[0] = 300;
+			S = [S[0], 0, 0, NUML((Math.abs((timeCount % (S[0] * 2)) - S[0]) / S[0]), 0.3, 0.7)];
+			S[4] = HSV2RGB(S[1], (S[2] / 100), S[3]);
+			input.execute(`net_replace_color ${I} 0x${NUM2HEX(S[4][0])}${NUM2HEX(S[4][1])}${NUM2HEX(S[4][2])}`);
+		}
+		if (id == 2) {
+			// *** Green shapes *** //
+			I = 7;
+			S[0] = 12;
+			S = [S[0], 107, 58, NUML((Math.abs((timeCount % (S[0] * 2)) - S[0]) / S[0]), 0.8, 1.0)];
+			S[4] = HSV2RGB(S[1], (S[2] / 100), S[3]);
+			input.execute(`net_replace_color ${I} 0x${NUM2HEX(S[4][0])}${NUM2HEX(S[4][1])}${NUM2HEX(S[4][2])}`);
+			// *** Crusher *** //
+			I = 11;
+			S[0] = 12;
+			S = [S[0], 315, 53, NUML((Math.abs((timeCount % (S[0] * 2)) - S[0]) / S[0]), 0.8, 1.0)];
+			S[4] = HSV2RGB(S[1], (S[2] / 100), S[3]);
+			input.execute(`net_replace_color ${I} 0x${NUM2HEX(S[4][0])}${NUM2HEX(S[4][1])}${NUM2HEX(S[4][2])}`);
+		}
+	}
+	if (diepHackSystem_MenuFlag == false) {
+		$('#diepHack-menu').fadeOut('fast', 'swing');
+	} else {
+		$('#diepHack-menu').fadeIn('fast', 'swing');
+	}
+	timeCount = timeCount + 1;
+};
+function loop() {
+	timeNow = new Date().getTime();
+	timePassed = timeNow - timeStart;
+	while (timeNow - timeLast > timeUnit) {
+		timeLast += timeUnit;
+		main();
+	}
+}
+setInterval(loop, 5);
+
+// *** マウス操作時 *** //
+function onMouseDown(e) {
+	if (tankIndex == 0) {
+		return;
+	}
+	if (e.button == 2) {
+		if (!effective) {
+			startA = countBullet - 50;
+			mouseX = e.clientX;
+			mouseY = e.clientY;
+			canvas.dispatchEvent(new MouseEvent("mousedown", {clientX: mouseX, clientY: mouseY}));
+		}
+		effective = true;
+	}
+}
+function onMouseUp(e) {
+	if (tankIndex == 0) {
+		return;
+	}
+	if (e.button == 2) {
+		if (effective) {
+			canvas.dispatchEvent(new MouseEvent("mouseup", {clientX: mouseX, clientY: mouseY}));
+		}
+		effective = false;
+	}
+}
+function onMouseMove(e) {
+	if (tankIndex == 0) {
+		return;
+	}
+	if (effective) {
+		if (!artificialMouseMove) {
+			e.stopPropagation();
+			mouseX = e.clientX;
+			mouseY = e.clientY;
+		}
+	} else {
+		mouseX = e.clientX;
+		mouseY = e.clientY;
+	}
+}
+// *** マウスの操作の更新 *** //
+function update(_countBullet) {
+	frameRequest = window.requestAnimationFrame(update);
+	countBullet = _countBullet;
+	if (effective) {
+		var da = countBullet - startA;
+		readyBullet[0] = Math.floor(cycleRate * da * NCANNON) % (NCANNON * 2);
+		readyBullet[1] = readyBullet[0] % NCANNON;
+		readyBullet[2] = [Math.floor(readyBullet[0] / NCANNON)];
+		var angle = angleUnit * readyBullet[1] * (readyBullet[1] % 2 == readyBullet[2] ? 1 : -1);
+		var cx = window.innerWidth / 2;
+		var cy = window.innerHeight / 2;
+		var sin = Math.sin(angle);
+		var cos = Math.cos(angle);
+		var x = mouseX - cx;
+		var y = mouseY - cy;
+		var _x = cos * x - sin * y;
+		var _y = sin * x + cos * y;
+		x = _x + cx;
+		y = _y + cy;
+		artificialMouseMove = true;
+		canvas.dispatchEvent(new MouseEvent("mousemove", {clientX: x, clientY: y}));
+		artificialMouseMove = false;
+	}
+}
+// *** 攻撃種類の変更 *** //
+function changeTank(index) {
+	var data = tankData[index];
+	tankIndex = index;
+	cycleRate = data.cycleRate;
+	maxAngle = data.maxAngle;
+	NCANNON = data.NCANNON;
+	angleUnit = maxAngle / (NCANNON - 1);
+	bltype = data.name;
+}
+// *** マウスの操作の初期化 *** //
+function init() {
+	canvas.addEventListener("mousedown", onMouseDown);
+	canvas.addEventListener("mouseup", onMouseUp);
+	window.addEventListener("mousemove", onMouseMove, true);
+	frameRequest = window.requestAnimationFrame(update);
+	changeTank(0);
+}
+init();
